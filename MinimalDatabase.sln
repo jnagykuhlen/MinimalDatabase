@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MinimalDatabase", "MinimalDatabase\MinimalDatabase.csproj", "{103D49B4-8E1B-40C2-BDF2-65DD1D2FE238}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApplication", "TestApplication\TestApplication.csproj", "{15B802E5-22DC-438D-A931-CB473D7A889D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{103D49B4-8E1B-40C2-BDF2-65DD1D2FE238}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{103D49B4-8E1B-40C2-BDF2-65DD1D2FE238}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{103D49B4-8E1B-40C2-BDF2-65DD1D2FE238}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{103D49B4-8E1B-40C2-BDF2-65DD1D2FE238}.Release|Any CPU.Build.0 = Release|Any CPU
+		{15B802E5-22DC-438D-A931-CB473D7A889D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15B802E5-22DC-438D-A931-CB473D7A889D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15B802E5-22DC-438D-A931-CB473D7A889D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15B802E5-22DC-438D-A931-CB473D7A889D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
