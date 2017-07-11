@@ -10,9 +10,11 @@ namespace MinimalDatabase.Internal
     public class StorageStream : Stream
     {
         private PagingManager _pagingManager;
-        private uint _pageId;
+        private uint _firstHeaderPageId;
+        private uint _lastHeaderPageId;
         private long _length;
         private long _position;
+
         private StorageHeaderPage _currentHeaderPage;
         private long _currentHeaderPageOffset;
         private byte[] _currentDataPage;
@@ -23,13 +25,24 @@ namespace MinimalDatabase.Internal
         public StorageStream(PagingManager pagingManager, uint pageId)
         {
             _pagingManager = pagingManager;
-            _pageId = pageId;
+            _firstHeaderPageId = pageId;
+            _length = 0;
+            _position = 0;
 
             StorageHeaderPage headerPage = new StorageHeaderPage();
-            _pagingManager.ReadPage(_pageId, headerPage);
+            uint currentHeaderPageId = _firstHeaderPageId;
 
-            _length = headerPage.TotalNumberOfDataPages * pagingManager.PageSize - headerPage.TotalNumberOfUnusedBytes;
-            _position = 0;
+            while (currentHeaderPageId != PagingManager.NullPageId)
+            {
+                _pagingManager.ReadPage(currentHeaderPageId, headerPage);
+
+                _lastHeaderPageId = currentHeaderPageId;
+                _length += headerPage.NumberOfBytes;
+
+                currentHeaderPageId = headerPage.NextHeaderPageId;
+            }
+            
+            _pagingManager.ReadPage(_firstHeaderPageId, headerPage);
             _currentHeaderPage = headerPage;
             _currentHeaderPageOffset = 0;
             _currentDataPage = null;
@@ -110,7 +123,7 @@ namespace MinimalDatabase.Internal
         {
             if (position < _currentHeaderPageOffset)
             {
-                _pagingManager.ReadPage(_pageId, _currentHeaderPage);
+                _pagingManager.ReadPage(_firstHeaderPageId, _currentHeaderPage);
                 _currentHeaderPageOffset = 0;
             }
 
@@ -172,10 +185,137 @@ namespace MinimalDatabase.Internal
             Flush();
         }
 
-        public override void SetLength(long value)
+        public override void SetLength(long totalNumberOfBytes)
         {
-            // TODO
-            throw new NotImplementedException();
+            uint existingNumberOfDataPages = MathHelper.DivCeil(_length, _pagingManager.PageSize);
+            uint requiredNumberOfDataPages = MathHelper.DivCeil(totalNumberOfBytes, _pagingManager.PageSize);
+            uint numberOfDataPagesPerHeaderPage = (_pagingManager.PageSize - StorageHeaderPage.FixedHeaderLength) / sizeof(uint);
+            uint numberOfBytesPerHeaderPage = numberOfDataPagesPerHeaderPage * _pagingManager.PageSize;
+
+            if (totalNumberOfBytes > _length)
+            {
+                AllocateStorage(
+                    totalNumberOfBytes,
+                    existingNumberOfDataPages,
+                    requiredNumberOfDataPages,
+                    numberOfDataPagesPerHeaderPage,
+                    numberOfBytesPerHeaderPage
+                );
+            }
+            else if (totalNumberOfBytes < _length)
+            {
+                DeallocateStorage(
+                    totalNumberOfBytes,
+                    existingNumberOfDataPages,
+                    requiredNumberOfDataPages,
+                    numberOfDataPagesPerHeaderPage,
+                    numberOfBytesPerHeaderPage
+                );
+            }
+
+            _length = totalNumberOfBytes;
+        }
+
+        private void AllocateStorage(
+            long totalNumberOfBytes,
+            uint existingNumberOfDataPages,
+            uint requiredNumberOfDataPages,
+            uint numberOfDataPagesPerHeaderPage,
+            uint numberOfBytesPerHeaderPage)
+        {
+            StorageHeaderPage lastHeaderPage = new StorageHeaderPage();
+            _pagingManager.ReadPage(_lastHeaderPageId, lastHeaderPage);
+
+            uint currentHeaderPageId = _lastHeaderPageId;
+            uint previousHeaderPageId = lastHeaderPage.PreviousHeaderPageId;
+            uint remainingNumberOfDataPages = requiredNumberOfDataPages - existingNumberOfDataPages + lastHeaderPage.NumberOfDataPages;
+            uint[] dataPageIds = new uint[numberOfDataPagesPerHeaderPage];
+            uint offsetPages = lastHeaderPage.NumberOfDataPages;
+
+            Array.Copy(lastHeaderPage.DataPageIds, dataPageIds, offsetPages);
+
+            do
+            {
+                uint numberOfDataPages = remainingNumberOfDataPages;
+                uint nextHeaderPageId = PagingManager.NullPageId;
+                uint numberOfBytes = (uint)(totalNumberOfBytes % numberOfBytesPerHeaderPage);
+                bool allocateNextHeaderPage = false;
+
+                if (remainingNumberOfDataPages > numberOfDataPagesPerHeaderPage)
+                {
+                    numberOfDataPages = numberOfDataPagesPerHeaderPage;
+                    numberOfBytes = numberOfBytesPerHeaderPage;
+                    allocateNextHeaderPage = true;
+                }
+
+                for (uint i = offsetPages; i < numberOfDataPages; ++i)
+                    dataPageIds[i] = _pagingManager.AllocatePage();
+
+                if(allocateNextHeaderPage)
+                    nextHeaderPageId = _pagingManager.AllocatePage();
+
+                StorageHeaderPage storageHeaderPage = new StorageHeaderPage()
+                {
+                    NextHeaderPageId = nextHeaderPageId,
+                    PreviousHeaderPageId = previousHeaderPageId,
+                    NumberOfDataPages = numberOfDataPages,
+                    NumberOfBytes = numberOfBytes,
+                    DataPageIds = dataPageIds
+                };
+
+                _pagingManager.WritePage(currentHeaderPageId, storageHeaderPage);
+
+                previousHeaderPageId = currentHeaderPageId;
+                currentHeaderPageId = nextHeaderPageId;
+                remainingNumberOfDataPages -= numberOfDataPages;
+                offsetPages = 0;
+            }
+            while (remainingNumberOfDataPages > 0);
+
+            _lastHeaderPageId = previousHeaderPageId;
+        }
+
+        public void DeallocateStorage(
+            long totalNumberOfBytes,
+            uint existingNumberOfDataPages,
+            uint requiredNumberOfDataPages,
+            uint numberOfDataPagesPerHeaderPage,
+            uint numberOfBytesPerHeaderPage)
+        {
+            StorageHeaderPage currentHeaderPage = new StorageHeaderPage();
+            uint currentHeaderPageId = _lastHeaderPageId;
+            uint remainingNumberOfDataPages = existingNumberOfDataPages - requiredNumberOfDataPages;
+            
+            while(true)
+            {
+                _pagingManager.ReadPage(currentHeaderPageId, currentHeaderPage);
+                
+                if (remainingNumberOfDataPages < currentHeaderPage.NumberOfDataPages || currentHeaderPageId == _firstHeaderPageId)
+                {
+                    uint usedPages = currentHeaderPage.NumberOfDataPages - remainingNumberOfDataPages;
+
+                    for (int i = (int)(currentHeaderPage.NumberOfDataPages - 1); i >= usedPages; --i)
+                        _pagingManager.DeallocatePage(currentHeaderPage.DataPageIds[i]);
+
+                    currentHeaderPage.NumberOfDataPages = usedPages;
+                    currentHeaderPage.NumberOfBytes = (uint)(totalNumberOfBytes % numberOfBytesPerHeaderPage);
+                    currentHeaderPage.NextHeaderPageId = PagingManager.NullPageId;
+
+                    _pagingManager.WritePage(currentHeaderPageId, currentHeaderPage);
+                    break;
+                }
+                else
+                {
+                    for (int i = (int)(currentHeaderPage.NumberOfDataPages - 1); i >= 0; --i)
+                        _pagingManager.DeallocatePage(currentHeaderPage.DataPageIds[i]);
+
+                    _pagingManager.DeallocatePage(currentHeaderPageId);
+                    remainingNumberOfDataPages -= currentHeaderPage.NumberOfDataPages;
+                    currentHeaderPageId = currentHeaderPage.PreviousHeaderPageId;
+                }
+            }
+
+            _lastHeaderPageId = currentHeaderPageId;
         }
 
         public override bool CanRead

@@ -20,71 +20,31 @@ namespace MinimalDatabase.Internal
             _pagingManager = pagingManager;
         }
 
-        public uint AllocateStorage(uint numberOfBytes)
+        public uint AllocateStorage(long initialNumberOfBytes)
         {
-            uint totalNumberOfDataPages = numberOfBytes / _pagingManager.PageSize;
-            if (numberOfBytes % _pagingManager.PageSize > 0)
-                totalNumberOfDataPages++;
-
-            uint totalNumberOfUnusedBytes = totalNumberOfDataPages * _pagingManager.PageSize - numberOfBytes;
-            uint numberOfDataPagesPerHeaderPage = (_pagingManager.PageSize - StorageHeaderPage.FixedHeaderLength) / sizeof(uint);
+            StorageHeaderPage firstHeaderPage = new StorageHeaderPage()
+            {
+                NextHeaderPageId = PagingManager.NullPageId,
+                PreviousHeaderPageId = PagingManager.NullPageId,
+                NumberOfDataPages = 0,
+                NumberOfBytes = 0
+            };
 
             uint firstHeaderPageId = _pagingManager.AllocatePage();
-            uint currentHeaderPageId = firstHeaderPageId;
-            uint remainingNumberOfDataPages = totalNumberOfDataPages;
+            _pagingManager.WritePage(firstHeaderPageId, firstHeaderPage);
 
-            uint[] dataPageIds = new uint[numberOfDataPagesPerHeaderPage];
+            if(initialNumberOfBytes > 0)
+                GetStorageStream(firstHeaderPageId).SetLength(initialNumberOfBytes);
 
-            do
-            {
-                uint numberOfDataPages = remainingNumberOfDataPages;
-                uint nextHeaderPageId = PagingManager.NullPageId;
-
-                if (remainingNumberOfDataPages > numberOfDataPagesPerHeaderPage)
-                {
-                    numberOfDataPages = numberOfDataPagesPerHeaderPage;
-                    nextHeaderPageId = _pagingManager.AllocatePage();
-                }
-
-                for (int i = 0; i < numberOfDataPages; ++i)
-                    dataPageIds[i] = _pagingManager.AllocatePage();
-
-                StorageHeaderPage storageHeaderPage = new StorageHeaderPage()
-                {
-                    NextHeaderPageId = nextHeaderPageId,
-                    NumberOfDataPages = numberOfDataPages,
-                    TotalNumberOfDataPages = totalNumberOfDataPages,
-                    TotalNumberOfUnusedBytes = totalNumberOfUnusedBytes,
-                    DataPageIds = dataPageIds
-                };
-
-                _pagingManager.WritePage(currentHeaderPageId, storageHeaderPage);
-
-                currentHeaderPageId = nextHeaderPageId;
-                remainingNumberOfDataPages -= numberOfDataPages;
-            }
-            while (remainingNumberOfDataPages > 0);
-
-            Logger.WriteLine(LogSenderName, "Allocating storage... Reserved {0} Byte managed at page {1}.", numberOfBytes, firstHeaderPageId);
+            Logger.WriteLine(LogSenderName, "Allocating storage... Reserved {0} Byte managed at page {1}.", initialNumberOfBytes, firstHeaderPageId);
 
             return firstHeaderPageId;
         }
         
         public void DeallocateStorage(uint pageId)
         {
-            StorageHeaderPage headerPage = new StorageHeaderPage();
-            uint currentHeaderPageId = pageId;
-
-            while(currentHeaderPageId != PagingManager.NullPageId)
-            {
-                _pagingManager.ReadPage(currentHeaderPageId, headerPage);
-
-                for (int i = (int)headerPage.NumberOfDataPages - 1; i >= 0; --i)
-                    _pagingManager.DeallocatePage(headerPage.DataPageIds[i]);
-
-                _pagingManager.DeallocatePage(currentHeaderPageId);
-                currentHeaderPageId = headerPage.NextHeaderPageId;
-            }
+            GetStorageStream(pageId).SetLength(0);
+            _pagingManager.DeallocatePage(pageId);
 
             Logger.WriteLine(LogSenderName, "Deallocating storage... Recycled storage managed at page {0}.", pageId);
         }

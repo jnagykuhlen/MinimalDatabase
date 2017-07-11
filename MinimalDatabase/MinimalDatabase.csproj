@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DatabaseException.cs" />
+    <Compile Include="Internal\MathHelper.cs" />
     <Compile Include="Internal\PagingHeaderPage.cs" />
     <Compile Include="Internal\DatabaseHeaderPage.cs" />
     <Compile Include="RecordSerializer.cs" />
