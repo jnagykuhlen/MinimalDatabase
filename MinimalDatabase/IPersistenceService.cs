@@ -6,14 +6,13 @@ using System.Threading.Tasks;
 
 namespace MinimalDatabase
 {
-    public interface IPersistenceService
+    public interface IPersistenceService : IDisposable
     {
         void WritePage(uint id, byte[] data);
         byte[] ReadPage(uint id);
-        void Reserve(uint numberOfPages);
+        void SetNumberOfPages(uint numberOfPages);
 
         uint PageSize { get; }
         uint NumberOfPages { get; }
-        bool IsReadonly { get; }
     }
 }

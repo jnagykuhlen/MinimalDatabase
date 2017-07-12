@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Diagnostics;
 
 using MinimalDatabase.Logging;
 
@@ -51,9 +52,6 @@ namespace MinimalDatabase.Internal
 
         private void Initialize()
         {
-            if (_persistenceService.IsReadonly)
-                throw new DatabaseException("Cannot initialize database without write access to persistence service.");
-            
             ReservePage(PagingHeaderPageId);
             UpdatePagingHeaderPage();
 
@@ -62,7 +60,7 @@ namespace MinimalDatabase.Internal
         
         private void ReservePage(uint pageId)
         {
-            _persistenceService.Reserve(pageId + 1);
+            _persistenceService.SetNumberOfPages(pageId + 1);
         }
 
         private void UpdatePagingHeaderPage()
@@ -137,7 +135,7 @@ namespace MinimalDatabase.Internal
             else
             {
                 pageId = _persistenceService.NumberOfPages;
-                _persistenceService.Reserve(pageId + 1);
+                _persistenceService.SetNumberOfPages(pageId + 1);
 
                 Logger.WriteLine(LogSenderName, "Allocating... Reserved more pages, return page {0}.", pageId);
             }
@@ -147,6 +145,9 @@ namespace MinimalDatabase.Internal
 
         public void DeallocatePage(uint pageId)
         {
+            if (pageId == _nextFreePageId)
+                throw new InvalidOperationException(String.Format("Page {0} is already deallocated.", pageId));
+
             byte[] data = new byte[_pageSize];
             Array.Copy(BitConverter.GetBytes(_nextFreePageId), 0, data, 0, sizeof(uint));
             WritePage(pageId, data);

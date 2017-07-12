@@ -46,7 +46,7 @@ namespace MinimalDatabase
             return data;
         }
 
-        public void Reserve(uint numberOfPages)
+        public void SetNumberOfPages(uint numberOfPages)
         {
             _fileStream.SetLength((long)numberOfPages * _pageSize);
             _numberOfPages = numberOfPages;
