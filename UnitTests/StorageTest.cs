@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Text;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -87,6 +88,50 @@ namespace UnitTests
                 }
 
                 Assert.IsTrue(isDataEqual, "Read data does not match written data.");
+            }
+        }
+
+        [TestMethod]
+        public void TestResize()
+        {
+            Random random = new Random(42);
+            byte[] writeData = new byte[StorageLength];
+            byte[] readData = new byte[StorageLength];
+            random.NextBytes(writeData);
+
+            _storageStream.Write(writeData, 0, writeData.Length);
+
+            long[] sampleLengths = new long[]
+            {
+                9956421,
+                6635489,
+                3448949,
+                5551334,
+                8345612,
+                 348913,
+                1234565
+            };
+
+            long minimumLength = _storageStream.Length;
+            foreach(long length in sampleLengths)
+            {
+                Array.Clear(readData, 0, readData.Length);
+                _storageStream.SetLength(length);
+                _storageStream.Position = 0;
+
+                if (length < minimumLength)
+                    minimumLength = length;
+                
+                Assert.IsTrue(_storageStream.Length == length, "Stream length does not match set length.");
+
+                int readBytes = _storageStream.Read(readData, 0, readData.Length);
+                Assert.IsTrue(readBytes == length, "Did not read full storage data.");
+
+                for (int i = 0; i < minimumLength; ++i)
+                    Assert.IsTrue(readData[i] == writeData[i], "Read data does not match written data.");
+
+                for (int i = (int)length; i < writeData.Length; ++i)
+                    Assert.IsTrue(readData[i] == 0, "Read data exceeds end of stream.");
             }
         }
     }
