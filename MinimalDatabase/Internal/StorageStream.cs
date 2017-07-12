@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Diagnostics;
 
 namespace MinimalDatabase.Internal
 {
@@ -119,21 +120,26 @@ namespace MinimalDatabase.Internal
             return count;
         }
 
+        private void ResetCurrentHeaderPage()
+        {
+            _pagingManager.ReadPage(_firstHeaderPageId, _currentHeaderPage);
+            _currentHeaderPageOffset = 0;
+        }
+
         private void LocateDataPage(long position)
         {
             if (position < _currentHeaderPageOffset)
-            {
-                _pagingManager.ReadPage(_firstHeaderPageId, _currentHeaderPage);
-                _currentHeaderPageOffset = 0;
-            }
+                ResetCurrentHeaderPage();
 
-            while (position > _currentHeaderPageOffset + _currentHeaderPage.NumberOfDataPages * _pagingManager.PageSize)
+            while (position >= _currentHeaderPageOffset + _currentHeaderPage.NumberOfDataPages * _pagingManager.PageSize)
             {
+                Debug.Assert(_currentHeaderPage.NextHeaderPageId != PagingManager.NullPageId, "Trying to locate position not included in headers.");
                 _currentHeaderPageOffset += _currentHeaderPage.NumberOfDataPages * _pagingManager.PageSize;
                 _pagingManager.ReadPage(_currentHeaderPage.NextHeaderPageId, _currentHeaderPage);
             }
 
             int dataPageIndex = (int)((position - _currentHeaderPageOffset) / _pagingManager.PageSize);
+            Debug.Assert(dataPageIndex >= 0 && dataPageIndex < _currentHeaderPage.NumberOfDataPages, "Data page index exceeds header page IDs.");
 
             _currentDataPageId = _currentHeaderPage.DataPageIds[dataPageIndex];
             _currentDataPageOffset = _currentHeaderPageOffset + dataPageIndex * _pagingManager.PageSize;
@@ -161,7 +167,7 @@ namespace MinimalDatabase.Internal
 
             if (_position + count > _length)
                 count = Math.Max((int)(_length - _position), 0);
-            
+
             int remainingBytes = count;
             while (remainingBytes > 0)
             {
@@ -214,6 +220,7 @@ namespace MinimalDatabase.Internal
             }
 
             _length = totalNumberOfBytes;
+            ResetCurrentHeaderPage();
         }
 
         private void AllocateStorage(
@@ -251,7 +258,7 @@ namespace MinimalDatabase.Internal
                 for (uint i = offsetPages; i < numberOfDataPages; ++i)
                     dataPageIds[i] = _pagingManager.AllocatePage();
 
-                if(allocateNextHeaderPage)
+                if (allocateNextHeaderPage)
                     nextHeaderPageId = _pagingManager.AllocatePage();
 
                 StorageHeaderPage storageHeaderPage = new StorageHeaderPage()
@@ -364,6 +371,25 @@ namespace MinimalDatabase.Internal
 
                 _position = value;
             }
+        }
+
+        private List<KeyValuePair<uint, StorageHeaderPage>> GetHeaderList()
+        {
+            List<KeyValuePair<uint, StorageHeaderPage>> headerList =
+                new List<KeyValuePair<uint, StorageHeaderPage>>(16);
+            
+            uint currentHeaderPageId = _firstHeaderPageId;
+
+            while (currentHeaderPageId != PagingManager.NullPageId)
+            {
+                StorageHeaderPage headerPage = new StorageHeaderPage();
+                _pagingManager.ReadPage(currentHeaderPageId, headerPage);
+
+                headerList.Add(new KeyValuePair<uint, StorageHeaderPage>(currentHeaderPageId, headerPage));
+                currentHeaderPageId = headerPage.NextHeaderPageId;
+            }
+
+            return headerList;
         }
     }
 }
