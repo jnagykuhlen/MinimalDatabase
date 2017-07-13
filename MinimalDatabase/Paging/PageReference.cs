@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinimalDatabase.Internal
+namespace MinimalDatabase.Paging
 {
     public class PageReference
     {

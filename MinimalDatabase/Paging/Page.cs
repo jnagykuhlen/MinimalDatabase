@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 
-namespace MinimalDatabase.Internal
+namespace MinimalDatabase.Paging
 {
     public abstract class Page
     {

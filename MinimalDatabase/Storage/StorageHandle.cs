@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinimalDatabase.Internal
+namespace MinimalDatabase.Storage
 {
     public class StorageHandle
     {

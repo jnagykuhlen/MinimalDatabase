@@ -7,7 +7,7 @@ using System.IO;
 using MinimalDatabase.Logging;
 using MinimalDatabase.Persistence;
 
-namespace MinimalDatabase.Internal
+namespace MinimalDatabase.Paging
 {
     public class PagingManager : IDisposable
     {

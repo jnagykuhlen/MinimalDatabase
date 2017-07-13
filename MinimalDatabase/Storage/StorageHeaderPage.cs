@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace MinimalDatabase.Internal
+using MinimalDatabase.Paging;
+
+namespace MinimalDatabase.Storage
 {
     public class StorageHeaderPage : Page
     {

@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-using MinimalDatabase.Internal;
+using MinimalDatabase.Paging;
 
 namespace MinimalDatabase
 {

@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
 using MinimalDatabase.Logging;
+using MinimalDatabase.Paging;
 
-namespace MinimalDatabase.Internal
+namespace MinimalDatabase.Storage
 {
     public class StorageManager
     {

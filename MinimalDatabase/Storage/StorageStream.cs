@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
 
-namespace MinimalDatabase.Internal
+using MinimalDatabase.Paging;
+
+namespace MinimalDatabase.Storage
 {
     public class StorageStream : Stream
     {
@@ -193,8 +194,8 @@ namespace MinimalDatabase.Internal
 
         public override void SetLength(long totalNumberOfBytes)
         {
-            uint existingNumberOfDataPages = MathHelper.DivCeil(_length, _pagingManager.PageSize);
-            uint requiredNumberOfDataPages = MathHelper.DivCeil(totalNumberOfBytes, _pagingManager.PageSize);
+            uint existingNumberOfDataPages = GetNumberOfPages(_length, _pagingManager.PageSize);
+            uint requiredNumberOfDataPages = GetNumberOfPages(totalNumberOfBytes, _pagingManager.PageSize);
             uint numberOfDataPagesPerHeaderPage = (_pagingManager.PageSize - StorageHeaderPage.FixedHeaderLength) / sizeof(uint);
             uint numberOfBytesPerHeaderPage = numberOfDataPagesPerHeaderPage * _pagingManager.PageSize;
 
@@ -323,6 +324,15 @@ namespace MinimalDatabase.Internal
             }
 
             _lastHeaderPageId = currentHeaderPageId;
+        }
+
+        private static uint GetNumberOfPages(long numberOfBytes, uint pageSize)
+        {
+            uint numberOfPages = (uint)(numberOfBytes / pageSize);
+            if (numberOfBytes % pageSize > 0)
+                ++numberOfPages;
+
+            return numberOfPages;
         }
 
         public override bool CanRead

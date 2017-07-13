@@ -41,28 +41,27 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DatabaseException.cs" />
-    <Compile Include="Internal\MathHelper.cs" />
-    <Compile Include="Internal\PagingHeaderPage.cs" />
-    <Compile Include="Internal\DatabaseHeaderPage.cs" />
+    <Compile Include="DatabaseHeaderPage.cs" />
+    <Compile Include="Paging\Page.cs" />
+    <Compile Include="Paging\PageReference.cs" />
+    <Compile Include="Paging\PagingHeaderPage.cs" />
+    <Compile Include="Paging\PagingManager.cs" />
     <Compile Include="Persistence\FilePagedPersistence.cs" />
     <Compile Include="Persistence\IPagedPersistence.cs" />
     <Compile Include="Persistence\FilePersistenceProvider.cs" />
     <Compile Include="Persistence\IPersistenceProvider.cs" />
     <Compile Include="RecordSerializer.cs" />
-    <Compile Include="Internal\Page.cs" />
-    <Compile Include="Internal\StorageHandle.cs" />
-    <Compile Include="Internal\StorageHeaderPage.cs" />
-    <Compile Include="Internal\StorageManager.cs" />
-    <Compile Include="Internal\StorageStream.cs" />
     <Compile Include="IRecordSerializer.cs" />
     <Compile Include="Database.cs" />
-    <Compile Include="Internal\PagingManager.cs" />
-    <Compile Include="Internal\PageReference.cs" />
     <Compile Include="Logging\ConsoleLoggingDevice.cs" />
     <Compile Include="Logging\ILoggingDevice.cs" />
     <Compile Include="Logging\Logger.cs" />
     <Compile Include="Logging\NullLoggingDevice.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Storage\StorageHandle.cs" />
+    <Compile Include="Storage\StorageHeaderPage.cs" />
+    <Compile Include="Storage\StorageManager.cs" />
+    <Compile Include="Storage\StorageStream.cs" />
     <Compile Include="Table.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
