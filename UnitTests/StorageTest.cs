@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using MinimalDatabase;
 using MinimalDatabase.Internal;
+using MinimalDatabase.Persistence;
 
 namespace UnitTests
 {
@@ -15,7 +16,6 @@ namespace UnitTests
         private const string FilePath = "TestDB.db";
         private const uint StorageLength = 10000000;
 
-        private FilePersistenceService _persistenceService;
         private PagingManager _pagingManager;
         private StorageManager _storageManager;
         private Stream _storageStream;
@@ -24,8 +24,7 @@ namespace UnitTests
         [TestInitialize]
         public void Initialize()
         {
-            _persistenceService = new FilePersistenceService(FilePath);
-            _pagingManager = new PagingManager(_persistenceService, Encoding.UTF8);
+            _pagingManager = new PagingManager(new FilePersistenceProvider(FilePath, false));
             _storageManager = new StorageManager(_pagingManager);
             _storagePageId = _storageManager.AllocateStorage(StorageLength);
             _storageStream = _storageManager.GetStorageStream(_storagePageId);
@@ -36,7 +35,7 @@ namespace UnitTests
         {
             _storageStream.Dispose();
             _storageManager.DeallocateStorage(_storagePageId);
-            _persistenceService.Dispose();
+            _pagingManager.Dispose();
             File.Delete(FilePath);
         }
 

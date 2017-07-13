@@ -7,6 +7,7 @@ using System.IO;
 
 using MinimalDatabase;
 using MinimalDatabase.Logging;
+using MinimalDatabase.Persistence;
 
 namespace TestApplication
 {
@@ -18,12 +19,9 @@ namespace TestApplication
         {
             // Logger.LoggingDevice = new ConsoleLoggingDevice();
 
-            Console.WriteLine("Creating persistence service...");
-            using (FilePersistenceService persistenceService = new FilePersistenceService(FilePath))
+            Console.WriteLine("Loading database...");
+            using (Database database = new Database(new FilePersistenceProvider(FilePath)))
             {
-                Console.WriteLine("Loading database...");
-                Database database = new Database(persistenceService);
-                
                 uint storageId = database.StorageManager.AllocateStorage(10000000);
 
                 using (Stream storageStream = database.StorageManager.GetStorageStream(storageId))
