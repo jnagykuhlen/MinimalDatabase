@@ -4,9 +4,9 @@ using System.Text;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using MinimalDatabase;
-using MinimalDatabase.Internal;
 using MinimalDatabase.Persistence;
+using MinimalDatabase.Paging;
+using MinimalDatabase.Storage;
 
 namespace UnitTests
 {
