@@ -2,40 +2,52 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.IO;
-using System.Diagnostics;
 
 using MinimalDatabase.Logging;
+using MinimalDatabase.Persistence;
 
 namespace MinimalDatabase.Internal
 {
-    public class PagingManager
+    public class PagingManager : IDisposable
     {
         public const uint NullPageId = 0;
 
+        private static readonly Encoding DefaultEncoding = Encoding.UTF8;
+        private const uint DefaultPageSize = 4096;
         private const uint MinimumPageSize = 512;
         private const uint PagingHeaderPageId = 0;
         private const string LogSenderName = "Paging";
 
-        private IPersistenceService _persistenceService;
+        private IPersistenceProvider _persistenceProvider;
+        private IPagedPersistence _databasePersistence;
         private Encoding _encoding;
         private uint _pageSize;
         private uint _nextFreePageId;
         private uint _nextHeaderPageId;
 
-        public PagingManager(IPersistenceService persistenceService, Encoding encoding)
+        public PagingManager(IPersistenceProvider persistenceProvider)
+            : this(persistenceProvider, DefaultEncoding, DefaultPageSize) { }
+
+        public PagingManager(IPersistenceProvider persistenceProvider, Encoding encoding, uint pageSize)
         {
-            _persistenceService = persistenceService;
+            if (persistenceProvider == null)
+                throw new ArgumentNullException(nameof(persistenceProvider));
+
+            if (encoding == null)
+                throw new ArgumentNullException(nameof(encoding));
+
+            if (pageSize < MinimumPageSize)
+                throw new ArgumentException(String.Format("Paging manager requires a minimum page size of {0} bytes.", MinimumPageSize), nameof(pageSize));
+
+            _persistenceProvider = persistenceProvider;
+            _databasePersistence = persistenceProvider.OpenDatabase(pageSize);
             _encoding = encoding;
-            _pageSize = persistenceService.PageSize;
+            _pageSize = pageSize;
             _nextFreePageId = NullPageId;
             _nextHeaderPageId = NullPageId;
             
-            if (_pageSize < MinimumPageSize)
-                throw new DatabaseException(String.Format("Persistence service does not provide a minimum page size of {0} bytes.", MinimumPageSize));
-
-            if (_persistenceService.NumberOfPages == 0)
+            if (_databasePersistence.NumberOfPages == 0)
                 Initialize();
 
             PagingHeaderPage pagingHeaderPage = new PagingHeaderPage();
@@ -60,7 +72,7 @@ namespace MinimalDatabase.Internal
         
         private void ReservePage(uint pageId)
         {
-            _persistenceService.SetNumberOfPages(pageId + 1);
+            _databasePersistence.SetNumberOfPages(pageId + 1);
         }
 
         private void UpdatePagingHeaderPage()
@@ -86,13 +98,13 @@ namespace MinimalDatabase.Internal
         public void WritePage(uint pageId, byte[] data)
         {
             Logger.WriteLine(LogSenderName, "Written raw data to page {0}.", pageId);
-            _persistenceService.WritePage(pageId, data);
+            _databasePersistence.WritePage(pageId, data);
         }
 
         public byte[] ReadPage(uint pageId)
         {
             Logger.WriteLine(LogSenderName, "Read raw data from page {0}.", pageId);
-            return _persistenceService.ReadPage(pageId);
+            return _databasePersistence.ReadPage(pageId);
         }
         
         public void WritePage(uint pageId, Page page)
@@ -103,14 +115,14 @@ namespace MinimalDatabase.Internal
                 page.WriteToPersistence(writer);
             }
 
-            _persistenceService.WritePage(pageId, data);
+            _databasePersistence.WritePage(pageId, data);
 
             Logger.WriteLine(LogSenderName, "Written structured data ({0}) to page {1}.", page.GetType().Name, pageId);
         }
 
         public void ReadPage(uint pageId, Page page)
         {
-            byte[] data = _persistenceService.ReadPage(pageId);
+            byte[] data = _databasePersistence.ReadPage(pageId);
             using (BinaryReader reader = new BinaryReader(new MemoryStream(data), _encoding))
             {
                 page.ReadFromPersistence(reader);
@@ -134,8 +146,8 @@ namespace MinimalDatabase.Internal
             }
             else
             {
-                pageId = _persistenceService.NumberOfPages;
-                _persistenceService.SetNumberOfPages(pageId + 1);
+                pageId = _databasePersistence.NumberOfPages;
+                _databasePersistence.SetNumberOfPages(pageId + 1);
 
                 Logger.WriteLine(LogSenderName, "Allocating... Reserved more pages, return page {0}.", pageId);
             }
@@ -156,6 +168,11 @@ namespace MinimalDatabase.Internal
             UpdatePagingHeaderPage();
 
             Logger.WriteLine(LogSenderName, "Deallocating... Marked page {0} for recycling.", pageId);
+        }
+
+        public void Dispose()
+        {
+            _databasePersistence.Dispose();
         }
         
         public uint NextHeaderPageId

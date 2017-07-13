@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinimalDatabase
+namespace MinimalDatabase.Persistence
 {
-    public interface IPersistenceService : IDisposable
+    public interface IPagedPersistence : IDisposable
     {
         void WritePage(uint id, byte[] data);
         byte[] ReadPage(uint id);
+        void Flush();
         void SetNumberOfPages(uint numberOfPages);
 
         uint PageSize { get; }

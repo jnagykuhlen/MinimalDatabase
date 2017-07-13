@@ -154,16 +154,16 @@ namespace MinimalDatabase.Internal
         public override void Write(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
-                throw new ArgumentNullException("buffer");
+                throw new ArgumentNullException(nameof(buffer));
 
             if (offset + count > buffer.Length)
-                throw new ArgumentException("Write data exceeds buffer size.", "buffer");
+                throw new ArgumentException("Write data exceeds buffer size.", nameof(buffer));
 
             if (offset < 0)
-                throw new ArgumentException("Offset must not be negative.", "offset");
+                throw new ArgumentException("Offset must not be negative.", nameof(offset));
 
             if (count < 0)
-                throw new ArgumentException("Count must not be negative.", "count");
+                throw new ArgumentException("Count must not be negative.", nameof(count));
 
             if (_position + count > _length)
                 count = Math.Max((int)(_length - _position), 0);

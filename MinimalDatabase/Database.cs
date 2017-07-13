@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 using System.IO;
 
 using MinimalDatabase.Internal;
+using MinimalDatabase.Persistence;
 
 namespace MinimalDatabase
 {
-    public class Database
+    public class Database : IDisposable
     {
         private const uint Identifier = 109237914;
         private const uint CurrentVersion = 1;
@@ -18,12 +19,15 @@ namespace MinimalDatabase
         private StorageManager _storageManager;
         private Dictionary<string, PageReference> _tables;
 
-        public Database(IPersistenceService persistenceService)
-            : this(persistenceService, Encoding.UTF8) { }
+        public Database(IPersistenceProvider persistenceProvider)
+            : this(new PagingManager(persistenceProvider)) { }
 
-        public Database(IPersistenceService persistenceService, Encoding encoding)
+        public Database(IPersistenceProvider persistenceProvider, Encoding encoding, uint pageSize)
+            : this(new PagingManager(persistenceProvider, encoding, pageSize)) { }
+
+        private Database(PagingManager pagingManager)
         {
-            _pagingManager = new PagingManager(persistenceService, encoding);
+            _pagingManager = pagingManager;
             _storageManager = new StorageManager(_pagingManager);
             _tables = new Dictionary<string, PageReference>();
 
@@ -60,6 +64,11 @@ namespace MinimalDatabase
             }
 
             return new Table<T>(name, serializer, page);
+        }
+
+        public void Dispose()
+        {
+            _pagingManager.Dispose();
         }
         
         public StorageManager StorageManager

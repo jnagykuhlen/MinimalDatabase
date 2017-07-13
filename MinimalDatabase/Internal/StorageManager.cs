@@ -17,6 +17,9 @@ namespace MinimalDatabase.Internal
 
         public StorageManager(PagingManager pagingManager)
         {
+            if (pagingManager == null)
+                throw new ArgumentNullException(nameof(pagingManager));
+
             _pagingManager = pagingManager;
         }
 
